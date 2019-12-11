@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,8 +13,7 @@ import (
 
 func changeFile(text string) string {
 	r, _ := regexp.Compile(`[^.!?]*[.!?]`)
-	found := r.FindString(text)
-	return strings.Replace(text, found, "\""+found+"\"", 1)
+	return r.FindString(text)
 }
 
 func getCLIArgs() (string, string) {
@@ -37,26 +37,30 @@ func listDirectory(directory string) ([]string, error) {
 	return files, nil
 }
 
-func copyScan(readScanner *bufio.Scanner, writeScanner *bufio.Writer) error {
-	var parsed = false
-	for readScanner.Scan() {
-		var text = readScanner.Text()
-		if !parsed {
-			text = changeFile(text)
-			parsed = true
-		}
-		_, err := writeScanner.WriteString(text)
+func copyScan(fileRead *os.File, writeScanner *bufio.Writer) error {
+	buffer := make([]byte, 1)
+	var data = ""
+	for {
+		bytesread, err := fileRead.Read(buffer)
 		if err != nil {
-			return err
+			if err != io.EOF {
+				return err
+			}
+			break
 		}
-		writeScanner.WriteByte('\n')
-		// move from buffer to file
-		writeScanner.Flush()
+		data += string(buffer[:bytesread])
+		var changedData = changeFile(data)
+		if changedData != "" {
+			data = changedData
+			break
+		}
 	}
-
-	if err := readScanner.Err(); err != nil {
+	_, err := writeScanner.WriteString(data)
+	if err != nil {
 		return err
 	}
+	// move from buffer to file
+	writeScanner.Flush()
 	return nil
 }
 
@@ -69,8 +73,6 @@ func copyFile(input string, output string, filename string, wg *sync.WaitGroup) 
 		return
 	}
 	defer fileRead.Close()
-	// create read scanner for it
-	readScanner := bufio.NewScanner(fileRead)
 	// create file if not exists
 	fileWrite, err := os.Create(output + strings.TrimSuffix(filename, filepath.Ext(filename)) + ".res")
 	if err != nil {
@@ -81,7 +83,7 @@ func copyFile(input string, output string, filename string, wg *sync.WaitGroup) 
 	// create write scanner for it
 	writeScanner := bufio.NewWriter(fileWrite)
 
-	err = copyScan(readScanner, writeScanner)
+	err = copyScan(fileRead, writeScanner)
 	if err != nil {
 		fmt.Println(err)
 		return
