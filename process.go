@@ -11,9 +11,17 @@ import (
 	"sync"
 )
 
-func changeFile(text string) string {
-	r, _ := regexp.Compile(`[^.!?]*[.!?]`)
-	return r.FindString(text)
+// var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
+func checkSentence(prev byte, cur byte) bool {
+	if string(cur) != " " {
+		return false
+	}
+	match, _ := regexp.MatchString("[!?.]", string(prev))
+	if match {
+		return true
+	}
+	return false
 }
 
 func getCLIArgs() (string, string) {
@@ -38,29 +46,33 @@ func listDirectory(directory string) ([]string, error) {
 }
 
 func copyScan(fileRead *os.File, writeScanner *bufio.Writer) error {
+	var prev byte = ' '
 	buffer := make([]byte, 1)
-	var data = ""
 	for {
-		bytesread, err := fileRead.Read(buffer)
+		// Read from file to buffer
+		_, err := fileRead.Read(buffer)
+		// Error handling
 		if err != nil {
 			if err != io.EOF {
 				return err
 			}
+			fmt.Println(err)
 			break
 		}
-		data += string(buffer[:bytesread])
-		var changedData = changeFile(data)
-		if changedData != "" {
-			data = changedData
+		// Check if sentence has finished
+		if checkSentence(prev, buffer[0]) {
 			break
 		}
+		// Replace current char to previous
+		prev = buffer[0]
+		// Write char to write buffer
+		_, err = writeScanner.WriteString(string(buffer[0]))
+		if err != nil {
+			return err
+		}
+		// move from buffer to file
+		writeScanner.Flush()
 	}
-	_, err := writeScanner.WriteString(data)
-	if err != nil {
-		return err
-	}
-	// move from buffer to file
-	writeScanner.Flush()
 	return nil
 }
 
