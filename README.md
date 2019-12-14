@@ -11,7 +11,7 @@
 Ага, только лишь всего, один процесс, за раз в память в держит 2 байте, 
 но это в теории, потому что на деле, как я понял, их 3, так как один байт еще идет
 на буффер для записи в файл. Это теоретический подсчет,
- 
+
 НО
 
 эти подсчеты почти не релеванты,
@@ -32,3 +32,14 @@ go tool pprof process
 process: parsing profile: unrecognized profile format
 failed to fetch any source profiles
 `
+
+UPD
+
+https://flaviocopes.com/golang-profiling/
+
+script to create new file
+for i in {000..100}; do     echo Hi, I am John, and what is your name? > "File${i}.txt"; done
+Seems like I have ~20 opended files limit :(
+https://ttboj.wordpress.com/2015/07/27/golang-parallelism-issues-causing-too-many-open-files-error/
+open input/File1152.txt: too many open files
+

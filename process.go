@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/pkg/profile"
 )
 
 // var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
@@ -120,6 +122,7 @@ func copyDirectory(input string, output string) error {
 }
 
 func main() {
+	defer profile.Start(profile.MemProfile).Stop()
 	input, output := getCLIArgs()
 	err := copyDirectory(input, output)
 	if err != nil {
